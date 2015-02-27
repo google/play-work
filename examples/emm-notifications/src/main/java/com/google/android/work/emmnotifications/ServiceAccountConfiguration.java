@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 
 /**
- * Create a Pubsub client with the service account.
+ * Creates a Pubsub client with the service account.
  */
 public class ServiceAccountConfiguration {
 

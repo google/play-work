@@ -2,6 +2,7 @@ package com.google.android.work.emmnotifications;
 
 import com.google.android.work.pubsub.EmmPubsub;
 import com.google.api.client.http.HttpResponseException;
+import com.google.api.client.http.HttpStatusCodes;
 import com.google.api.client.json.JsonParser;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.pubsub.Pubsub;
@@ -12,7 +13,6 @@ import com.google.common.io.CharStreams;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import org.apache.commons.cli.CommandLine;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -21,24 +21,39 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * THIS WILL BE EXTERNAL CODE
+ * This is a sample subscriber code. To run it you need to have an SSL endpoint configured
+ * and run this code either on port 443 (update below) on the server backing this endpoint or
+ * configure a reverse proxy from port 443 to 8093.
+ *
+ * Details: [link will be here]
+ *
+ * To run this sample code:
+ * <ol>
+ *   <li>Modify settings.properties or specify a different file via DEVELOPER_CONSOLE_SETTINGS
+ *   environment variable</li>
+ *   <li>Build a deploy jar using <code>mvn clean compile assembly:single</code></li>
+ *   <li>Execute it as <code>
+ *     java -cp target/emm-notifications-1.0-SNAPSHOT-jar-with-dependencies.jar \
+ *      com.google.android.work.emmnotifications.PushSubscriber</code></li>
+ * </ol>
  */
 public class PushSubscriber {
-  private static final String PUSH_ENDPOINT = "https://e.r-k.co";
+  // this can be any port
   private static final int PORT = 8093;
 
   private static final Logger LOG = Logger.getLogger(PushSubscriber.class.getName());
   public static final String MESSAGE_FIELD = "message";
 
   public static void main(String[] args) throws Exception {
-    CommandLine commandLine = Common.getCommandLine(args);
-    Pubsub client = Common.makePubsubClient();
+    Pubsub client = ServiceAccountConfiguration.createPubsubClient(
+        Settings.getSettings().getServiceAccountEmail(),
+        Settings.getSettings().getServiceAccountP12KeyPath());
 
     // First we check if subscription actually exists for this subscription name.
     Subscription subscription = null;
 
-    String topicName = commandLine.getOptionValue(Common.TOPIC_NAME, Common.getDefaultTopicName());
-    String subName = commandLine.getOptionValue(Common.SUBSCRIPTION_NAME, Common.getDefaultSubscriptionName());
+    String topicName = Settings.getSettings().getTopicName();
+    String subName = Settings.getSettings().getSubscriptionName();
 
     LOG.info("Will be using topic name: " + topicName + ", subscription name: " + subName);
 
@@ -54,7 +69,7 @@ public class PushSubscriber {
     } catch (HttpResponseException e) {
 
       // subscription not found
-      if (e.getStatusCode() == 404) {
+      if (e.getStatusCode() == HttpStatusCodes.STATUS_CODE_NOT_FOUND) {
         LOG.info("Subscription doesn't exist, will try to create " + subName);
 
         // Creating subscription
@@ -65,7 +80,8 @@ public class PushSubscriber {
                 .setTopic(topicName)   // Name of the topic it subscribes to
                 .setAckDeadlineSeconds(600)
                 .setPushConfig(new PushConfig()
-                    .setPushEndpoint(PUSH_ENDPOINT))) // FQDN with valid SSL certificate
+                    // FQDN with valid SSL certificate
+                    .setPushEndpoint(Settings.getSettings().getPushEndpoint())))
             .execute();
 
         LOG.info("Created: " + subscription.toPrettyString());
@@ -77,7 +93,8 @@ public class PushSubscriber {
     HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
     server.createContext("/", new HttpHandler() {
       public void handle(HttpExchange httpExchange) throws IOException {
-        String rawRequest = CharStreams.toString(new InputStreamReader(httpExchange.getRequestBody()));
+        String rawRequest = CharStreams.toString(
+            new InputStreamReader(httpExchange.getRequestBody()));
         LOG.info("Raw request: " + rawRequest);
 
         try {

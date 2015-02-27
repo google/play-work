@@ -1,11 +1,16 @@
 package com.google.android.work.emmnotifications.notpublic;
 
-import com.google.android.work.emmnotifications.Common;
+import com.google.android.work.emmnotifications.ServiceAccountConfiguration;
+import com.google.android.work.emmnotifications.Settings;
 import com.google.api.client.http.HttpResponseException;
 import com.google.api.services.pubsub.Pubsub;
-import com.google.api.services.pubsub.model.*;
+import com.google.api.services.pubsub.model.AcknowledgeRequest;
+import com.google.api.services.pubsub.model.PubsubMessage;
+import com.google.api.services.pubsub.model.PullRequest;
+import com.google.api.services.pubsub.model.PullResponse;
+import com.google.api.services.pubsub.model.ReceivedMessage;
+import com.google.api.services.pubsub.model.Subscription;
 import com.google.common.collect.ImmutableList;
-import org.apache.commons.cli.CommandLine;
 
 import java.net.SocketTimeoutException;
 import java.util.logging.Logger;
@@ -19,10 +24,11 @@ public class PullSubscriber {
   private static final Logger LOG = Logger.getLogger(PullSubscriber.class.getName());
 
   public static void main(String[] args) throws Exception {
-    CommandLine commandLine = Common.getCommandLine(args);
-    Pubsub client = Common.makePubsubClient();
-    String topicName = commandLine.getOptionValue(Common.TOPIC_NAME, Common.getDefaultTopicName());
-    String subName = commandLine.getOptionValue(Common.SUBSCRIPTION_NAME, Common.getDefaultSubscriptionName());
+    Pubsub client = ServiceAccountConfiguration.createPubsubClient(
+        Settings.getSettings().getServiceAccountEmail(),
+        Settings.getSettings().getServiceAccountP12KeyPath());
+    String topicName = Settings.getSettings().getTopicName();
+    String subName = Settings.getSettings().getSubscriptionName();
     Subscription subscription = null;
 
     try {
