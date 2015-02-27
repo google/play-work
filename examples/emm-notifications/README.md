@@ -7,6 +7,10 @@ delivered in form of a push notification to the specified HTTPS endpoint;
 alternatively, server can open a connection and wait for notification to be
 sent.
 
+*Before you start:* it is strongly recommended to familiarise yourself with
+the official [Cloud Pub/Sub
+documentation](https://cloud.google.com/pubsub/overview).
+
 Push endpoint configuration
 ---------------------------
 
@@ -172,3 +176,153 @@ Now you should have your server configured. You can quickly verify the configura
     </html>
 
 This is expected response given no downstream server was configured (`localhost:8093` in our config file).
+
+Compiling and running examples
+------------------------------
+
+### Configuring Developer Console account
+
+In order to run these examples you should have an active [Developer Console](https://console.developers.google.com) project. We recommend you to create one specifically for experimentation purposes and not re-use your production project. Once you've created one, you should create a service account using the steps described [here](https://developers.google.com/accounts/docs/OAuth2ServiceAccount#creatinganaccount). You will need to make a note of the service account email address and download the `p12` file to somewhere on your server.
+
+### Setting up the source code tree
+
+Clone the git repository:
+
+    ubuntu@ubuntu3:~/code$ git clone https://github.com/google/play-work.git
+    Cloning into 'play-work'...
+    Username for 'https://github.com': sigizmund
+    Password for 'https://sigizmund@github.com': 
+    remote: Counting objects: 110, done.
+    remote: Compressing objects: 100% (60/60), done.
+    remote: Total 110 (delta 24), reused 95 (delta 9), pack-reused 0
+    Receiving objects: 100% (110/110), 23.88 KiB | 0 bytes/s, done.
+    Resolving deltas: 100% (24/24), done.
+    Checking connectivity... done.
+
+To compile these examples you will have to have Maven installed. Check your maven version by running `mvn -v`. If you do not have maven, you can usually install it by running `sudo apt-get install maven` on the most Debian-based distributions. You will also need to have Google Protocol Buffers compiler installed. You can install it by running `sudo apt-get install protobuf-compiler`. Ensure that you have `protoc` in your `/usr/bin`; if it is installed elsewhere you can either symlink it to `/use/bin` or modify Maven `pom.xml` to point it to a different location.
+
+Verify that you can build the code by running `mvn clean compile assembly:single`. This should produce a file named `emm-notifications-[version-number]-jar-with-dependencies.jar`, where `[version number]` is the current version of the example (e.g. `1.0-SNAPSHOT`).
+
+    ubuntu@ubuntu3:~/code/play-work/examples/emm-notifications$ ls target/*
+    target/emm-notifications-1.0-SNAPSHOT-jar-with-dependencies.jar
+
+Verify that you can run the compiled code:
+
+    ubuntu@ubuntu3:~/code/play-work/examples/emm-notifications$ java -cp \
+      target/emm-notifications-1.0-SNAPSHOT-jar-with-dependencies.jar \
+      com.google.android.work.emmnotifications.FauxPublisher
+      Exception in thread "main" java.lang.IllegalArgumentException: You must specify non-default ServiceAccountEmail in settings.properties
+        at com.google.api.client.repackaged.com.google.common.base.Preconditions.checkArgument(Preconditions.java:119)
+        at com.google.api.client.util.Preconditions.checkArgument(Preconditions.java:69)
+        at com.google.android.work.emmnotifications.Settings.verifyVariable(Settings.java:129)
+        at com.google.android.work.emmnotifications.Settings.getSettings(Settings.java:103)
+        at com.google.android.work.emmnotifications.FauxPublisher.main(FauxPublisher.java:39)
+
+It is expected for this code to fail with this error. You will need to override values in `settings.properties` file for it to work. We recommend to copy this file into your own file, e.g. `my_settings.properties` and change values there. Modify your properties file to match:
+
+    # This should be your own service account email address
+    ServiceAccountEmail=368628613713-t4hfexampledn5lhpdcu1qqfgio01626@developer.gserviceaccount.com
+    ServiceAccountP12KeyFile=/opt/secret/secret.p12
+
+    # This will be the name of the service account you will create                                                                     
+    ProjectName=enterprise-cloud-pub-sub
+    SubscriptionName=projects/enterprise-cloud-pub-sub/subscriptions/default
+    TopicName=projects/enterprise-cloud-pub-sub/topics/default
+
+    # Define new push endpoint in developer console project                                                                            
+    PushEndpoint=https://push.acme-corp.com
+
+### Running the test publisher code
+
+Now you can try to launch your application:
+
+    ubuntu@ubuntu3:~/code/play-work/examples/emm-notifications$ DEVELOPER_CONSOLE_SETTINGS=./my_settings.properties java -cp \
+      target/emm-notifications-1.0-SNAPSHOT-jar-with-dependencies.jar com.google.android.work.emmnotifications.FauxPublisher
+    Feb 27, 2015 1:39:59 PM com.google.android.work.emmnotifications.RetryHttpInitializerWrapper$1 handleResponse
+    INFO: RetryHandler: {
+      "error": {
+        "code": 404,
+        "message": "Resource not found (resource=default).",
+        "errors": [
+          {
+            "message": "Resource not found (resource=default).",
+            "domain": "global",
+            "reason": "notFound"
+          }
+        ],
+        "status": "NOT_FOUND"
+      }
+    }
+
+    Feb 27, 2015 1:39:59 PM com.google.android.work.emmnotifications.FauxPublisher main
+    INFO: Topic projects/enterprise-cloud-pub-sub/topics/default doesn't exists, creating it
+    Feb 27, 2015 1:40:02 PM com.google.android.work.emmnotifications.FauxPublisher main
+    INFO: Topic projects/enterprise-cloud-pub-sub/topics/default created
+    Feb 27, 2015 1:40:02 PM com.google.android.work.emmnotifications.FauxPublisher main
+    INFO: Publishing a request: {messages=[{data=CjEKFQoIMTIzMjEzMjESCXJpZ2h0IG5vdxIWY29tLmdvb2dsZS5hbmRyb2lkLmdtcxgA}]}
+
+What happened is: application started, it didn't find the topic you've specified in `my_settings.properties` so it went on and created it. Once this was done, it has published a message to this topic. This example should provide a valuable testing tool which would allow to emulate messages sent by the Play for Work API.
+
+### Running the subscriber
+
+Now we will run a subscriber to ensure we can receive the messages publisher by `FauxPublisher`. Ensure your code is up to date and compiled, and run:
+
+```
+ubuntu@ubuntu3:~/code/play-work/examples/emm-notifications$ DEVELOPER_CONSOLE_SETTINGS=./my_settings.properties java -cp target/emm-notifications-1.0-SNAPSHOT-jar-with-dependencies.jar com.google.android.work.emmnotifications.PushSubscriber
+Feb 27, 2015 1:46:37 PM com.google.android.work.emmnotifications.PushSubscriber main
+INFO: Will be using topic name: projects/enterprise-cloud-pub-sub/topics/default, subscription name: projects/enterprise-cloud-pub-sub/subscriptions/default
+Feb 27, 2015 1:46:38 PM com.google.android.work.emmnotifications.PushSubscriber main
+INFO: Trying to get subscription named projects/enterprise-cloud-pub-sub/subscriptions/default
+Feb 27, 2015 1:46:38 PM com.google.android.work.emmnotifications.RetryHttpInitializerWrapper$1 handleResponse
+INFO: RetryHandler: {
+  "error": {
+    "code": 404,
+    "message": "Resource not found (resource=default).",
+    "errors": [
+      {
+        "message": "Resource not found (resource=default).",
+        "domain": "global",
+        "reason": "notFound"
+      }
+    ],
+    "status": "NOT_FOUND"
+  }
+}
+
+Feb 27, 2015 1:46:38 PM com.google.android.work.emmnotifications.PushSubscriber main
+INFO: Subscription doesn't exist, will try to create projects/enterprise-cloud-pub-sub/subscriptions/default
+Feb 27, 2015 1:46:43 PM com.google.android.work.emmnotifications.PushSubscriber main
+INFO: Created: {
+  "ackDeadlineSeconds" : 600,
+  "name" : "projects/enterprise-cloud-pub-sub/subscriptions/default",
+  "pushConfig" : {
+    "pushEndpoint" : "https://e.r-k.co"
+  },
+  "topic" : "projects/enterprise-cloud-pub-sub/topics/default"
+}
+```
+
+Now subscriber is running and ready to accept incoming messages. Run publisher one more time; you will see new messages added to the log:
+
+
+```
+Feb 27, 2015 1:47:24 PM com.google.android.work.emmnotifications.PushSubscriber$1 handle
+INFO: Raw request: {"message":{"data":"CjEKFQoIMTIzMjEzMjESCXJpZ2h0IG5vdxIWY29tLmdvb2dsZS5hbmRyb2lkLmdtcxgA","attributes":{},"message_id":"71571141246"},"subscription":"/subscriptions/enterprise-cloud-pub-sub/default"}
+Feb 27, 2015 1:47:24 PM com.google.android.work.emmnotifications.PushSubscriber$1 handle
+INFO: Pubsub message received: {
+  "attributes" : { },
+  "data" : "CjEKFQoIMTIzMjEzMjESCXJpZ2h0IG5vdxIWY29tLmdvb2dsZS5hbmRyb2lkLmdtcxgA",
+  "message_id" : "71571141246"
+}
+Feb 27, 2015 1:47:24 PM com.google.android.work.emmnotifications.PushSubscriber$1 handle
+INFO: Message received: product_approval_event {
+  common_event_information {
+    enterprise_id: "12321321"
+    event_notification_sent_timestamp: "right now"
+  }
+  product_id: "com.google.android.gms"
+  approved: false
+}
+```
+
+This means the message has been received and processed correctly.
