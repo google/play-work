@@ -1,10 +1,10 @@
 Play for Work EMM Notifications
 ===============================
 
-EMM notifications allow EMMs to receive push or pull notifications when some
+EMM notifications allow EMMs to receive push or pull notifications when
 changes that require admin attention occur. Information about the changes is
-delivered in form of a push notification to the specified HTTPS endpoint;
-alternatively, server can open a connection and wait for notification to be
+delivered in the form of a push notification to the specified HTTPS endpoint;
+alternatively, an EMM server can open a connection and wait for notification to be
 sent.
 
 *Before you start:* it is strongly recommended to familiarise yourself with
@@ -14,14 +14,14 @@ documentation](https://cloud.google.com/pubsub/overview).
 Push endpoint configuration
 ---------------------------
 
-Before notifications can be received, the endpoint must be configured. Endpoint must meet following criteria:
+Before notifications can be received, the endpoint must be configured. The endpoint must meet the following criteria:
 
-* You must own the domain since you will have to verify it in [Developer Console](https://console.developers.google.com)
+* You must own the domain since you will have to verify it in the [Google Developer Console](https://console.developers.google.com)
 * You should be able to run service on port 443 (SSL)
-* You must have a signed SSL certificate. Self-signed certificate will not work.
-* Webserver you are running should support [WebHook](http://en.wikipedia.org/wiki/Webhook)
+* You must have a CA-signed SSL certificate. Self-signed certificate will not work.
+* The web server you are running should support [WebHook](http://en.wikipedia.org/wiki/Webhook)
 
-In this example we will configure popular Nginx server in reverse-proxy mode to connect to the subscriber app running on port 8093. Following assumptions are made:
+In this example we will configure the popular Nginx server in reverse-proxy mode to connect to the subscriber app (in `PushSubscriber.java`) running on port 8093. Following assumptions are made:
 
 * Ubuntu 14.04 or later server is used, this is likely to work without any changes on any Debian based server; for RedHat based servers config paths likely to be different.
 * You have access to `sudo` on the server
@@ -29,7 +29,9 @@ In this example we will configure popular Nginx server in reverse-proxy mode to 
 You should start with producing an SSL certificate. Please note, that you must specify your actual server name instead of `push.acme-corp.com` in your certificate. You can use any subdomain as long as the A record of this subdomain points to your server.
 
     kirillov@ubuntu3:/tmp$ sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-        -keyout cert.key -out cert.crtGenerating a 2048 bit RSA private key
+        -keyout cert.key -out cert.crt
+
+    Generating a 2048 bit RSA private key
     ...............................................................................................+++
     .....+++
     writing new private key to 'cert.key'
@@ -54,7 +56,7 @@ Verify that certificate file was written:
     kirillov@ubuntu3:/tmp$ ls cert*
     cert.crt  cert.key
 
-Next step is to sign this certificate. You have to produce so-called [Certificate Signing Request](http://en.wikipedia.org/wiki/Certificate_signing_request) (CSR) which you will upload to your signer.
+Next step is to get this certificate signed. You have to produce so-called [Certificate Signing Request](http://en.wikipedia.org/wiki/Certificate_signing_request) (CSR) which you will upload to your signer.
 
     kirillov@ubuntu3:/tmp$ sudo openssl  x509 -x509toreq -in cert.crt \
       -out cert.csr -signkey cert.key 
@@ -63,7 +65,7 @@ Next step is to sign this certificate. You have to produce so-called [Certificat
     kirillov@ubuntu3:/tmp$ ls cert.*
     cert.crt  cert.csr  cert.key
 
-Check the content of the CSR file, it should look like that:
+Check the content of the CSR file, it should look like this:
 
 
     Certificate Request:
@@ -97,18 +99,18 @@ Check the content of the CSR file, it should look like that:
     ...
     -----END CERTIFICATE REQUEST-----
 
-Now you will upload part of your certificate between `BEGIN ...` and `END ...` including those lines to your certificate authority. The process might be different for different providers, but the general structure is:
+Now you will upload the part of your certificate between `BEGIN ...` and `END ...` inclusive to your certificate authority. The process might be different for different providers, but the general structure is:
 
-1. File is uploaded / pasted to the authority website
+1. File is uploaded / pasted to the CA website
 2. They validate it and start processing
 3. Once processing was finished they provide a file with a signed certificate to download. 
 
-Usually produced files contains multiple files -- signed certificate itself and certificates authority's certificate confirming they are eligible to sign certificates. You will have to concatenate all `*.crt` certificate files in the downloaded bundle to a single bundle file and configure Nginx to use it as your certificate (let's assume you will name it bundle.push.acme-corp.com.crt)
+Usually the produced files contains multiple files -- the signed certificate itself and the CA's certificate confirming they are eligible to sign certificates. You will have to concatenate all `*.crt` certificate files in the downloaded bundle to a single bundle file (let's assume you will name it bundle.push.acme-corp.com.crt)
 
 Configuring Nginx
 -----------------
 
-In this section we will configure popular open-source web server and reverse proxy server to serve the endpoint and forward all incoming requests to the subscriber endpoint.
+In this section we will configure the popular open-source web server and reverse proxy server to serve the endpoint and forward all incoming requests to the subscriber endpoint.
 
 You should start with installing Nginx on your server:
 
@@ -166,7 +168,7 @@ Restart Nginx to pick up the changes:
 
 Now you should have your server configured. You can quickly verify the configuration by trying to query it using curl:
 
-    [kirillov@sgzmd:~]$ curl e.r-k.co
+    [kirillov@sgzmd:~]$ curl push.acme-corp.com
     <html>
     <head><title>502 Bad Gateway</title></head>
     <body bgcolor="white">
@@ -296,7 +298,7 @@ INFO: Created: {
   "ackDeadlineSeconds" : 600,
   "name" : "projects/enterprise-cloud-pub-sub/subscriptions/default",
   "pushConfig" : {
-    "pushEndpoint" : "https://e.r-k.co"
+    "pushEndpoint" : "https://push.acme-corp.com"
   },
   "topic" : "projects/enterprise-cloud-pub-sub/topics/default"
 }
