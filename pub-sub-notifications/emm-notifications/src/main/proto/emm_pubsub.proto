@@ -28,6 +28,13 @@ message MdmPushNotification {
   repeated TestPushNotification test_push_notification = 3;
   // Delivers notifications about changes to a product's approval status.
   repeated ProductApprovalEvent product_approval_event = 4;
+  // Delivers notifications about an app installation failure.
+  repeated InstallFailureEvent install_failure_event = 5;
+  // Delivers notifications about app updates.
+  repeated AppUpdateEvent app_update_event = 6;
+  // Delivers notifications about new app permissions.
+  repeated NewPermissionsEvent new_permissions_event = 7;
+  // Delivers notifications about new app restrictions schema changes.
 }
 
 // A test notification used to verify the MDM push notification setup.
@@ -46,4 +53,63 @@ message ProductApprovalEvent {
   }
   // [Required] Whether the product was approved or unapproved.
   optional ApprovalStatus approved = 2;
+}
+
+// An event generated when an app installation failed on a device
+message InstallFailureEvent {
+  // [Required] The ID of the product.
+  optional string product_id = 1;
+
+  // [Required] The Android ID of the device.
+  optional string device_id = 2;
+
+  // [Required] The ID of the user.
+  optional string user_id = 3;
+
+  // The reason for the installation failure.
+  enum InstallFailureReason {
+    // Used whenever no better reason for failure can be provided.
+    UNKNOWN = 0;
+    // Used when the installation timed out. This can cover a number of
+    // situations, for example when the device did not have connectivity
+    // at any point during the retry period. An uninstall notification
+    // will be automatically sent to the device to ensure the install does not
+    // proceed, even if the install notification is eventually received.
+    TIMEOUT = 1;
+  }
+
+  // [Required] The reason for the installation failure.
+  optional InstallFailureReason failure_reason = 4;
+
+  // Additional details on the failure if applicable.
+  optional string failure_details = 5;
+}
+
+// An event generated when a new app version is uploaded to Play.
+// Notification will be sent only for new public versions.
+// E.g. new alpha, beta or canary versions will not generate this event.
+// To fetch up to date version history for an app please use
+// Products.Get on the EMM API.
+message AppUpdateEvent {
+  // [Required] The ID of the product. This product can represent only an app
+  // product type.
+  optional string product_id = 1;
+}
+
+// An event generated when new permissions are added to an app.
+message NewPermissionsEvent {
+  // [Required] The ID of the product. This product can represent only an app
+  // product type.
+  optional string product_id = 1;
+
+  // The set of permissions that the app is currently requesting.
+  // Please use Permissions.Get on the EMM API ro retrieve details about these
+  // permissions.
+  repeated string requested_permissions = 2;
+
+  // The set of permissions that the enterprise admin has already approved for
+  // this application.
+  // Please use Permissions.Get on the EMM API ro retrieve details about these
+  // permissions.
+  repeated string approved_permissions = 3;
 }
