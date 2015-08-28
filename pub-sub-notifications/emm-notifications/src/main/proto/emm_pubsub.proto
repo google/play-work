@@ -34,7 +34,6 @@ message MdmPushNotification {
   repeated AppUpdateEvent app_update_event = 6;
   // Delivers notifications about new app permissions.
   repeated NewPermissionsEvent new_permissions_event = 7;
-  // Delivers notifications about new app restrictions schema changes.
 }
 
 // A test notification used to verify the MDM push notification setup.
