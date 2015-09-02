@@ -1,52 +1,58 @@
-# Play for Work EMM Notifications
+# Set Up Google Play for Work EMM Notifications
 
-EMM notifications allow EMMs to receive push or pull notifications, in particular
-regarding changes that may require an Admin's attention. Information about
-changes can be received in one of two ways: either the EMM receives a push notification to a
-specified HTTPS endpoint (a *push subscription*), or an EMM server can open a
-connection and wait for notifications to be sent (a *pull subscription*).
-
-## Before you start
-
-It is strongly recommended that you familiarize yourself with
-the [Cloud Pub/Sub
+Google Play for Work Enterprise Mobility Management (EMM) notifications allow
+EMMs to receive push or pull notifications that inform administrators of
+important events. This document describes how to set up push notifications only.
+Additional information and examples on how to set up push and pull notifications
+are available in the official [Cloud Pub/Sub
 documentation](https://cloud.google.com/pubsub/overview).
 
-In this document we will only demonstrate how to set up a *push subscription* to receive push
-notifications. Examples for
-enabling a *pull subscription* are available in the [Cloud Pub/Sub
-documentation](https://cloud.google.com/pubsub/overview "Cloud Pub/Sub Overview").
+You can configure your system so that push notifications are sent to either a
+specified HTTPS endpoint, or to a server that waits for notifications to be sent.
 
-## Push endpoint configuration
-### Requirements
+## Information about push endpoint configuration
 
-In order to receive push notifications, you must configure an endpoint to which the notifications
-will be pushed. While it is not required that your endpoint [run on Google AppEngine](https://cloud.google.com/pubsub/prereqs#register), it must, however, meet the following criteria:
+To configure a push endpoint you need a server with a valid SSL certificate. In
+this example, you will create and upload an SSL certificate to a certificate authority
+(CA), then configure the Nginx server. Finally you will compile and run test code to
+confirm your set up is correct.
 
-* You must own the endpoint's domain, and you will have to verify your ownership in the
-  [Google Developer Console](https://console.developers.google.com "Google Developer Console").
-* You must be able to run a service on port 443 (SSL).
-* You must have a CA-signed SSL certificate. Self-signed certificates
-  are not supported.
-* The web server you are running must support
-  [WebHooks](http://en.wikipedia.org/wiki/Webhook "WebHooks").
+The sample scenario in this document shows how to configure an
+[Nginx server](https://www.nginx.com/resources/admin-guide/reverse-proxy/) in
+reverse­ proxy mode, to connect to the subscriber app (in `PushSubscriber.java`)
+running on port 8093, using Ubuntu 14.04. Your enterprise might use a different
+server, but the sample set up should work, without changes, on all Debian­ based
+distributions. Other distributions (such as those based on RedHat) are similar
+but the location of the configuration files may be different.
 
-In this example we will configure a Nginx server in
-reverse-proxy mode to connect to the subscriber app (in
-`PushSubscriber.java`) running on port 8093. This example makes the following assumptions:
+Note: To perform the tasks in this document you must have access to `sudo` on
+the server.
 
-* The setup process occurs on Ubuntu 14.04. This process is untested, but likely to work
-  without changes, on all Debian-based distributions. Furthermore this process is likely to be similar on other distributions (such as those based on RedHat), but the location of the configuration files may be different.
-* You have access to `sudo` on the server
+Before you can receive notifications, you must first configure an endpoint, that
+meets the following criteria:
 
-### Generate and sign your SSL certificate
+* You must own the domain, and you will have to verify your ownership in the
+[Google Developers Console](https://console.developers.google.com/).
 
-First, produce an SSL certificate, using your actual server name in place of
-`push.acme-corp.com`. You can use any subdomain as
-long as the `A` record of this subdomain points to your server:
+* You must be able to run a service on port 443 (SSL)
 
-    user@ubuntu3:/tmp$ sudo openssl req -x509 -nodes -days 365
-    -newkey rsa:2048 -keyout cert.key -out cert.crt
+* You must have a CA ­signed SSL certificate. Self­ signed certificates do not work.
+
+* The web server you are running must support [Webhooks](http://en.wikipedia.org/wiki/Webhook "Webhooks").
+
+Your endpoint does not need to [run on Google App Engine](https://cloud.google.com/pubsub/prereqs#register) (although it can).
+
+## Create and upload an SSL certificate
+
+1\. Produce a Secure Sockets Layer (SSL) certificate.
+
+    myusername@myhost:/tmp$ sudo openssl req -x509 -nodes -days 365
+      -newkey rsa:2048 -keyout cert.key -out cert.crt
+
+This generates the following response. Replace the sample values
+(such as `push.solarmora.com` and `myusername@myhost`) with your actual server
+name, company, address and so on, in the following code. You can use any
+subdomain as long as the `A` record of this subdomain points to your server.
 
     Generating a 2048 bit RSA private key
     ...........................................................................
@@ -63,37 +69,37 @@ long as the `A` record of this subdomain points to your server:
     Country Name (2 letter code) [AU]:GB
     State or Province Name (full name) [Some-State]:England
     Locality Name (eg, city) []:London
-    Organization Name (eg, company) [Internet Widgits Pty Ltd]:ACME Corp, Inc.
-    Organizational Unit Name (eg, section) []:Creative Anvils
-    Common Name (e.g. server FQDN or YOUR name) []:push.acme-corp.com
-    Email Address []:admin@acme-corp.com
+    Organization Name (eg, company) [Internet Widgits Pty Ltd]:Solarmora, Inc.
+    Organizational Unit Name (eg, section) []:Creative Publications
+    Common Name (e.g. server FQDN or YOUR name) []:push.solarmora.com
+    Email Address []:admin@solarmora.com
 
-Before proceeding, verify that certificate file was written:
 
-    user@ubuntu3:/tmp$ ls cert*
+2\. Verify that a certificate file was created:
+
+    $ myusername@myhost:/tmp$ ls cert*
     cert.crt  cert.key
 
-Next, you'll need to have this certificate signed. Produce
-a [Certificate Signing Request](http://en.wikipedia.org/wiki/Certificate_signing_request)
-(CSR) to upload to your signer.
+3\. To get this certificate signed, produce a
+[Certificate Signing Request](http://en.wikipedia.org/wiki/Certificate_signing_request) (CSR) to upload to your signer.
 
 ```
-user@ubuntu3:/tmp$ sudo openssl  x509 -x509toreq -in cert.crt \
+myusername@myhost:/tmp$ sudo openssl  x509 -x509toreq -in cert.crt \
 -out cert.csr -signkey cert.key
 Getting request Private Key
 Generating certificate request
-user@ubuntu3:/tmp$ ls cert.*
+myusername@myhost:/tmp$ ls cert.*
 cert.crt  cert.csr  cert.key
 ```
 
-Ensure the content of the CSR file resembles the following:
+4\. Ensure the content of the CSR file looks like this:
 
     Certificate Request:
     Data:
         Version: 0 (0x0)
-        Subject: C=GB, ST=England, L=London, O=ACME Corp, Inc.,
-        OU=Creative Anvils,
-        CN=push.acme-corp.com/emailAddress=admin@acme-corp.com
+        Subject: C=GB, ST=England, L=London, O=Solarmora, Inc.,
+        OU=Creative Publications,
+        CN=push.solarmora.com/emailAddress=admin@solarmora.com
         Subject Public Key Info:
             Public Key Algorithm: rsaEncryption
                 Public-Key: (2048 bit)
@@ -119,69 +125,68 @@ Ensure the content of the CSR file resembles the following:
     ...
     -----END CERTIFICATE REQUEST-----
 
-Upload the part of your certificate between `BEGIN ...`
-and `END ...` inclusive to your certificate authority. The process
-might be different for different providers, but in general the steps are as follows:
+5\. Upload the part of your certificate between the `BEGIN`
+and `END` lines inclusive to your CA. The exact process will
+depend on your CA, but will include the following steps:
 
-1. Uploaded to or paste your file on the CA site
-2. The CA will validate and begin processing
-3. Once processing is finished, the CA provides a file with a signed
-   certificate for download.
+1. Upload your CSR file to your CA site, or paste the content of your file onto your CA site. Your CA then validates and processes this data.
+2. Download the signed certificate generated by your CA.
 
-Typically the CA will output multiple files: the signed
-certificate itself and the CA's certificate confirming that the CA is
-eligible to sign certificates. Concatenate all
-`*.crt` certificate files in the downloaded bundle into a single bundle
-file, for example `bundle.push.acme-corp.com.crt':
+6\. The output from the CA should contains multiple files: the signed
+certificate itself and the CA's certificate confirming they are eligible to
+sign certificates. Concatenate all `*.crt` certificate files in the downloaded
+bundle into a single bundle file, for example bundle.push.solarmora.com.crt:
 
-    $ cat *.crt > bundle.push.acme-corp.com.crt
+    $ cat *.crt > bundle.push.solarmora.com.crt
 
-### Configure Nginx
+### Configure Your Proxy Server
 
-Next you will need to configure your server to serve the endpoint and forward all
-incoming requests to the subscriber server.
+In this section you configure the Nginx open ­source web server and reverse
+proxy server to serve the endpoint and forward all incoming requests to the
+subscriber server. Note that Nginx is used here as an example, but any other
+http proxy can be used instead.
 
-Start by installing Nginx on your server:
+1\. Install Nginx on your server:
 
-    sudo apt-get update
-    sudo apt-get install nginx
-    
-    nginx -v
-    nginx version: nginx/1.4.6 (Ubuntu)
+    $ sudo apt-get update
+    $ sudo apt-get install nginx
+
+    $ nginx -v
+    $ nginx version: nginx/1.4.6 (Ubuntu)
 
 
-Now edit `/etc/nginx/nginx.conf` and include the following:
+2\. To ensure that the extra server conifguration files you create  in the
+`sites-enabled` directory are processed by Nginx, edit `/etc/nginx/nginx.conf`
+and include the following:
 
-    include /etc/nginx/conf.d/*.conf;
-    include /etc/nginx/sites-enabled/*;
+    $ include /etc/nginx/conf.d/*.conf;
+    $ include /etc/nginx/sites-enabled/*;
 
-This ensures that the 'server' configuration file you create in a later step within the
-`sites-enabled` directory will be processed by Nginx.
 
-Copy your certificate files to a safe location, readable by the
+3\. Copy your certificate files to a safe location, readable by the
 `www-data` user, but preferably not readable by any other user (you may need
 to adjust the user name if your web server is running as a different
 user):
 
-    sudo mkdir -p /var/openssl/push.acme-corp.com
-    sudo mv /tmp/cert.key \
-        /var/openssl/push.acme-corp.com/push.acme-corp.com.key
-    sudo mv /tmp/bundle.push.acme-corp.com.crt \
-        /var/openssl/push.acme-corp.com/bundle.push.acme-corp.com.crt
+    $ sudo mkdir -p /var/openssl/push.solarmora.com
+    $ sudo mv /tmp/cert.key \
+        /var/openssl/push.solarmora.com/push.solarmora.com.key
+    $ sudo mv /tmp/bundle.push.solarmora.com.crt \
+        /var/openssl/push.solarmora.com/bundle.push.solarmora.com.crt
 
-Next create a new `server` configuration. Edit `push.acme-corp.com`
-in `/etc/nginx/sites-enabled` (it is recommended to use your actual
-server's fully-qualified domain name as the file name) as follows:
+4\. Create a new `server` configuration. Edit `push.solarmora.com`
+in `/etc/nginx/sites-enabled`. You should use your actual
+server's fully-qualified domain name as the file name, as follows:
 
     server {
        listen 443;
-       server_name push.acme-corp.com;
+       server_name push.solarmora.com;
 
        ssl on;
        ssl_certificate
-         /var/openssl/push.acme-corp.com/bundle.push.acme-corp.com.crt;
+         /var/openssl/push.solarmora.com/bundle.push.solarmora.com.crt;
        ssl_certificate_key
-         /var/openssl/push.acme-corp.com/push.acme-corp.com.key;
+         /var/openssl/push.solarmora.com/push.solarmora.com.key;
 
        # it is usually very convenient to have separate files for your
        # access and error log to analyze for possible problems
@@ -195,16 +200,16 @@ server's fully-qualified domain name as the file name) as follows:
        }
     }
 
-Restart Nginx to put the changes in effect:
+5\. Restart Nginx to implement the changes:
 
-    user@ubuntu3:/etc/nginx$ sudo service nginx restart
+    myusername@myhost:/etc/nginx$ sudo service nginx restart
      * Restarting nginx nginx
     ...done.
 
-Your server is now configured! You can quickly verify the
-configuration by trying to query your server using curl:
+6\. Your server is now configured. To verify the
+configuration, try to query your server using curl:
 
-    [user@sgzmd:~]$ curl push.acme-corp.com
+    [myusername@myhost:~]$ curl push.solarmora.com
     <html>
     <head><title>502 Bad Gateway</title></head>
     <body bgcolor="white">
@@ -217,56 +222,64 @@ This is the expected response given that no downstream server has been configure
 (`localhost:8093` in our config file).
 
 ## Compile and run examples
-### Configure the Developer Console account
-
-In order to run these examples you should have an active
-[Developer Console](https://console.developers.google.com "Google Developer Console") project. It is
-recommended that you create one specifically for testing EMM notifications,
-rather than using your production project. Once your project is created,
-create a service account using the steps described [here](https://developers.google.com/accounts/docs/OAuth2ServiceAccount),
-make a note of the service account email address, and
-put the associated `.p12` file somewhere on your server.
+To run the examples in this section you need an active [Google Developers Console](https://console.developers.google.com/)
+project. We recommend you create one specifically for testing purposes and
+keep it separate from your production project. After you create a test project,
+you need to create a [service account](https://developers.google.com/accounts/docs/OAuth2ServiceAccount).
+Make a note of the service account email address, and put the associated .p12 file somewhere on your server.
 
 ### Set up the source code tree
 
-First, clone the git repository of which this README is a part. To then compile these examples you will need to install both [Maven](https://maven.apache.org/) and the [Google Protocol Buffers compiler](https://developers.google.com/protocol-buffers/):
+1\. Clone the `play-work.git` repository.
 
-    user@ubuntu3:~$ mvn -v
+    myusername@myhost:~/code$ git clone
+    https://github.com/google/play-work.git
+    Cloning into 'play-work'...
+    Username for 'https://github.com': username
+    Password for 'https://username@github.com':
+    remote: Counting objects: 110, done.
+    remote: Compressing objects: 100% (60/60), done.
+    remote: Total 110 (delta 24), reused 95 (delta 9), pack-reused 0
+    Receiving objects: 100% (110/110), 23.88 KiB | 0 bytes/s, done.
+    Resolving deltas: 100% (24/24), done.
+    Checking connectivity... done.
+
+
+2\. Install both [Maven](https://maven.apache.org/) and the [Google Protocol Buffers compiler](https://developers.google.com/protocol-buffers/):
+
+    myusername@myhost:~$ mvn -v
     Apache Maven 3.0.5
     Maven home: /usr/share/maven
     Java version: 1.7.0_75, vendor: Oracle Corporation
     Java home: /usr/lib/jvm/java-7-openjdk-amd64/jre
     Default locale: en_US, platform encoding: UTF-8
     OS name: "linux", version: "3.16.0-30-generic", arch: "amd64", family: "unix"
-    user@ubuntu3:~$ protoc --version
+    myusername@myhost:~$ protoc --version
     libprotoc 2.5.0
 
-On Debian-based systems you can install them by running:
+3\. On Debian-based systems install both Maven and the Google Protocol Buffers compiler as follows:
 
-    sudo apt-get install maven protobuf-compiler
+    $ sudo apt-get install maven protobuf-compiler
 
-It is assumed that in the Maven configuration file `pom.xml`, the Protocol Buffers compiler is installed to `/usr/bin/protoc`:
+4\. The Maven configuration file `pom.xml` assumes that the Protocol Buffers compiler is installed to the `/usr/bin/protoc` directory:
 
-    user@ubuntu3:~$ which protoc
+    myusername@myhost:~$ which protoc
     /usr/bin/protoc
-    
 
-If this is not the case, you can either modify `pom.xml` or symlink `protoc`:
+   If this is not the case, you can either modify `pom.xml` or symlink `protoc`:
 
     $ sudo ln -s `which protoc` /usr/bin/protoc
 
-Verify that you can build the code by running `mvn clean compile
-assembly:single`. This should produce a file named
+5\. Compile the examples. Verify that you can build the code by running `mvn clean compile assembly:single`. This should produce a file named
 `emm-notifications-[version-number]-jar-with-dependencies.jar`, where
-`[version number]` is the current version of the example
-(e.g. `1.0-SNAPSHOT`).
+`[version number]` is the current version of the example, for example `1.0-SNAPSHOT`.
 
-    ubuntu@ubuntu3:~/code/play-work/examples/emm-notifications$ ls target/*
+    myusername@myhost:~/code/play-work/examples/emm-notifications$ ls target/*
     target/emm-notifications-1.0-SNAPSHOT-jar-with-dependencies.jar
 
-Verify that you can run the compiled code. It is expected that the code will fail:
+6\. Verify that you can run the compiled code. It is expected that the code will fail:
 
-    ubuntu@ubuntu3:~/code/play-work/examples/emm-notifications$ java -cp \
+    myusername@myhost:~/code/play-work/examples/emm-notifications$ java -cp \
       target/emm-notifications-1.0-SNAPSHOT-jar-with-dependencies.jar \
       com.google.android.work.emmnotifications.TestPublisher
       Exception in thread "main" java.lang.IllegalArgumentException:
@@ -280,9 +293,7 @@ Verify that you can run the compiled code. It is expected that the code will fai
         at com.google.android.work.emmnotifications.Settings.getSettings(Settings.java:103)
         at com.google.android.work.emmnotifications.TestPublisher.main(TestPublisher.java:39)
 
-Next you'll need to override some values in the `settings.properties` file. It is recommended that
-you create your own copy of this file and change these values in that copy. Modify your
-properties file to match the following:
+7\. You must override some values in the `settings.properties` file. Create a copy of the file and modify the properties in the copy as follows:
 
     # This should be your own service account's email address
     ServiceAccountEmail=368628613713-t4hfexampledn5lhpdcu1qqfgio01626@developer.gserviceaccount.com
@@ -293,20 +304,25 @@ properties file to match the following:
     SubscriptionName=projects/enterprise-cloud-pub-sub/subscriptions/default
     TopicName=projects/enterprise-cloud-pub-sub/topics/default
 
-    # The push endpoint in your developer console project
-    PushEndpoint=https://push.acme-corp.com
-    
+    # The push endpoint in your [Google Developers Console](https://console.developers.google.com/) project
+    PushEndpoint=https://push.solarmora.com
 
-Try and run the application again, and ensure it no longer crashes (note: you may see a single error
+
+8\. Run the application again, and ensure it no longer crashes (note: you may see a single error
 in the log output).
 
-### Run the test publisher code
+### Run the publisher test code
 
-As well as example code that will provide the basis of your subscriber, we have also included 
-code that can be used to publish notifications. Run this now so that your subscriber
-will have some messages to read:
+As well as sample subscriber code, we have also provided sample
+code to publish notifications. You need to run this code so that your subscriber will have some messages to read.
 
-    ubuntu@ubuntu3:~/code/play-work/examples/emm-notifications$ DEVELOPER_CONSOLE_SETTINGS=./my_settings.properties java -cp \
+In the following example, the application starts, looks for but doesn’t find the
+topic specified in `my_settings.properties`, and therefore creates the topic.
+It then publishes a message to the topic. This example provides a valuable
+testing tool that allows you to emulate messages sent by the Google Play for Work API.
+
+
+    myusername@myhost:~/code/play-work/examples/emm-notifications$ DEVELOPER_CONSOLE_SETTINGS=./my_settings.properties java -cp \
       target/emm-notifications-1.0-SNAPSHOT-jar-with-dependencies.jar com.google.android.work.emmnotifications.TestPublisher
     Feb 27, 2015 1:39:59 PM com.google.android.work.emmnotifications.RetryHttpInitializerWrapper$1 handleResponse
     INFO: RetryHandler: {
@@ -331,22 +347,14 @@ will have some messages to read:
     Feb 27, 2015 1:40:02 PM com.google.android.work.emmnotifications.TestPublisher main
     INFO: Publishing a request: {messages=[{data=CjEKFQoIMTIzMjEzMjESCXJpZ2h0IG5vdxIWY29tLmdvb2dsZS5hbmRyb2lkLmdtcxgA}]}
 
-Here's what happened in this example:
-1. The application started
-2. The application didn't find the topic that was specified in `my_settings.properties`
-3. Accordingly, the applicatio went on and created it the topic specified in 'my_settings_properties'
-4. Once the topic was created, the application published a message to this topic.
 
-This example thus provides a valuable testing tool that
-allows you to emulate messages sent by the Play for Work API.
+### Run the subscriber test code
 
-### Run the subscriber
+The subscriber test code confirms that you can receive the messages published by the test publisher `TestPublisher`. To run the subscriber test code:
 
-Next, run your subscriber to ensure you can receive messages
-published by `TestPublisher`. Ensure your code is up to date and
-compiled, and then run:
+1\. Ensure your code is up to date and compiled, and then run:
 
-    ubuntu@ubuntu3:~/code/play-work/examples/emm-notifications$ DEVELOPER_CONSOLE_SETTINGS=./my_settings.properties \
+    myusername@myhost:~/code/play-work/examples/emm-notifications$ DEVELOPER_CONSOLE_SETTINGS=./my_settings.properties \
       java -cp target/emm-notifications-1.0-SNAPSHOT-jar-with-dependencies.jar \
       com.google.android.work.emmnotifications.PushSubscriber
     Feb 27, 2015 1:46:37 PM com.google.android.work.emmnotifications.PushSubscriber main
@@ -382,8 +390,10 @@ compiled, and then run:
       "topic" : "projects/enterprise-cloud-pub-sub/topics/default"
     }
 
-The subscriber is now running and ready to accept incoming
-messages. Run the publisher one more time, and new messages will be
+   The subscriber is now running and ready to accept incoming
+messages.
+
+2\. Run the publisher again, and new messages will be
 added to the log:
 
     Feb 27, 2015 1:47:24 PM com.google.android.work.emmnotifications.PushSubscriber$1 handle
