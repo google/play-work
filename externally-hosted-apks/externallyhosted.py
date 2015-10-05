@@ -1,6 +1,6 @@
 """A tool to create an externally-hosted APK definition JSON from an APK.
 
-For more information see {@link}.
+For more information see README.md.
 
 """
 
