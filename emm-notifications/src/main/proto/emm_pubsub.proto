@@ -34,6 +34,9 @@ message MdmPushNotification {
   repeated AppUpdateEvent app_update_event = 6;
   // Delivers notifications about new app permissions.
   repeated NewPermissionsEvent new_permissions_event = 7;
+  // Delivers notifications about new app restrictions schema changes.
+  repeated AppRestrictionsSchemaChangeEvent
+      app_restrictions_schema_change_event = 8;
 }
 
 // A test notification used to verify the MDM push notification setup.
@@ -111,4 +114,14 @@ message NewPermissionsEvent {
   // Please use Permissions.Get on the EMM API ro retrieve details about these
   // permissions.
   repeated string approved_permissions = 3;
+}
+
+// An event generated when a new app version is uploaded to playstore and its
+// app restrictions schema changed.
+// To fetch the app restrictions schema for an app please use
+// Products.getAppRestrictionsSchema on the EMM API.
+message AppRestrictionsSchemaChangeEvent {
+  // [Required] The ID of the product. This product can represent only an app
+  // product type.
+  optional string product_id = 1 [(datapol.semantic_type) = ST_SOFTWARE_ID];
 }
