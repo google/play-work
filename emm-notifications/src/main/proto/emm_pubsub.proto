@@ -123,5 +123,5 @@ message NewPermissionsEvent {
 message AppRestrictionsSchemaChangeEvent {
   // [Required] The ID of the product. This product can represent only an app
   // product type.
-  optional string product_id = 1 [(datapol.semantic_type) = ST_SOFTWARE_ID];
+  optional string product_id = 1;
 }
