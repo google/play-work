@@ -37,10 +37,13 @@ message MdmPushNotification {
   // Delivers notifications about new app restrictions schema changes.
   repeated AppRestrictionsSchemaChangeEvent
       app_restrictions_schema_change_event = 8;
+  // Delivers notifications about product availability changes.
+  repeated ProductAvailabilityChangeEvent product_availability_change_event = 9;
 }
 
-// A test notification used to verify the MDM push notification setup.
-message TestPushNotification {}
+// A test notification used to verify the EMM push notification setup.
+message TestPushNotification {
+}
 
 // An event generated when a product's approval status is changed.
 message ProductApprovalEvent {
@@ -48,6 +51,8 @@ message ProductApprovalEvent {
   optional string product_id = 1;
 
   enum ApprovalStatus {
+    // Conveys no information.
+    UNKNOWN = 0;
     // The product was approved.
     APPROVED = 1;
     // The product was unapproved.
@@ -73,10 +78,8 @@ message InstallFailureEvent {
     // Used whenever no better reason for failure can be provided.
     UNKNOWN = 0;
     // Used when the installation timed out. This can cover a number of
-    // situations, for example when the device did not have connectivity
-    // at any point during the retry period. An uninstall notification
-    // will be automatically sent to the device to ensure the install does not
-    // proceed, even if the install notification is eventually received.
+    // situations, for example when the device did not have connectivity at any
+    // point during the retry period, or if the device is out of storage space.
     TIMEOUT = 1;
   }
 
@@ -87,11 +90,10 @@ message InstallFailureEvent {
   optional string failure_details = 5;
 }
 
-// An event generated when a new app version is uploaded to Play.
-// Notification will be sent only for new public versions.
-// E.g. new alpha, beta or canary versions will not generate this event.
-// To fetch up to date version history for an app please use
-// Products.Get on the EMM API.
+// An event generated when a new version of an app is uploaded to Google Play.
+// Notifications are sent for new public versions only: alpha, beta, or canary
+// versions do not generate this event. To fetch up-to-date version history for
+// an app, use Products.Get on the EMM API.
 message AppUpdateEvent {
   // [Required] The ID of the product. This product can represent only an app
   // product type.
@@ -105,18 +107,18 @@ message NewPermissionsEvent {
   optional string product_id = 1;
 
   // The set of permissions that the app is currently requesting.
-  // Please use Permissions.Get on the EMM API ro retrieve details about these
+  // Please use Permissions.Get on the EMM API to retrieve details about these
   // permissions.
   repeated string requested_permissions = 2;
 
   // The set of permissions that the enterprise admin has already approved for
   // this application.
-  // Please use Permissions.Get on the EMM API ro retrieve details about these
+  // Please use Permissions.Get on the EMM API to retrieve details about these
   // permissions.
   repeated string approved_permissions = 3;
 }
 
-// An event generated when a new app version is uploaded to playstore and its
+// An event generated when a new app version is uploaded to Google Play and its
 // app restrictions schema changed.
 // To fetch the app restrictions schema for an app please use
 // Products.getAppRestrictionsSchema on the EMM API.
@@ -124,4 +126,24 @@ message AppRestrictionsSchemaChangeEvent {
   // [Required] The ID of the product. This product can represent only an app
   // product type.
   optional string product_id = 1;
+}
+
+// An event generated whenever a product's availability changes.
+message ProductAvailabilityChangeEvent {
+  // [Required] The ID of the product.
+  optional string product_id = 1;
+
+  enum AvailabilityStatus {
+    // Conveys no information.
+    UNKNOWN = 0;
+    // The previously unavailable product is again available on Google Play.
+    AVAILABLE = 1;
+    // The product was removed from Google Play.
+    REMOVED = 2;
+    // The product was unpublished by the developer.
+    UNPUBLISHED = 3;
+  }
+
+  // [Required] The new status of the product.
+  optional AvailabilityStatus availability_status = 2;
 }
