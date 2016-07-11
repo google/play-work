@@ -1,3 +1,6 @@
 language: java
-before_script: cd emm-notifications
+before_script: 
+ - sudo apt-get install protobuf-compiler
+ - cd emm-notifications
+
 
