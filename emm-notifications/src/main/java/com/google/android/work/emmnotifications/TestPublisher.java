@@ -23,8 +23,6 @@ import com.google.api.services.pubsub.model.PublishRequest;
 import com.google.api.services.pubsub.model.PubsubMessage;
 import com.google.api.services.pubsub.model.Topic;
 import com.google.common.collect.ImmutableList;
-import com.google.common.time.Clock;
-import com.google.common.time.SystemClock;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -82,14 +80,13 @@ public class TestPublisher {
     }
 
     ImmutableList.Builder<PubsubMessage> listBuilder = ImmutableList.builder();
-    Clock clock = new SystemClock();
 
     EmmPubsub.MdmPushNotification mdmPushNotification = EmmPubsub.MdmPushNotification.newBuilder()
         .setEnterpriseId("12321321")
-        .setEventNotificationSentTimestampMillis(clock.now().getMillis())
+        .setEventNotificationSentTimestampMillis(System.currentTimeMillis())
         .addProductApprovalEvent(EmmPubsub.ProductApprovalEvent.newBuilder()
             .setApproved(EmmPubsub.ProductApprovalEvent.ApprovalStatus.UNAPPROVED)
-            .setProductId("app:com.android.chrome")
+            .setProductId("app:com.android.chrome"))
         .build();
 
     PublishRequest publishRequest = new PublishRequest()

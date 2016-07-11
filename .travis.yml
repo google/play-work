@@ -1,0 +1,7 @@
+language: java
+before_script: 
+ - sudo apt-get install protobuf-compiler
+ - sudo ln -s /usr/bin/protoc /usr/local/bin/protoc
+ - cd emm-notifications
+
+
