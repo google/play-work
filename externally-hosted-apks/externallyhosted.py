@@ -122,7 +122,7 @@ class AaptParser(AbstractApkParser):
     return subprocess.check_output(
         self.aapt_exe + " dump --values badging " + self.apk_file,
         stderr=subprocess.STDOUT,
-        shell=True).splitlines()
+        shell=True).decode('utf-8').splitlines()
 
   def parse(self):
     output = {}
@@ -181,11 +181,11 @@ class FileParser(AbstractApkParser):
 
     with open(self.apk_file, "rb") as f:
       output["file_sha1_base64"] = base64.b64encode(
-          hashlib.sha1(f.read()).digest())
+          hashlib.sha1(f.read()).digest()).decode('ascii')
 
     with open(self.apk_file, "rb") as f:
       output["file_sha256_base64"] = base64.b64encode(
-          hashlib.sha256(f.read()).digest())
+          hashlib.sha256(f.read()).digest()).decode('ascii')
 
     return output
 
@@ -265,7 +265,7 @@ class IconParser(AbstractApkParser):
     output = {}
     jar_zip = zipfile.ZipFile(self.apk_file)
     icon_file_bytes = jar_zip.read(self.icon_filename)
-    output["icon_base64"] = base64.b64encode(icon_file_bytes)
+    output["icon_base64"] = base64.b64encode(icon_file_bytes).decode('ascii')
     return output
 
 
@@ -402,9 +402,8 @@ def main():
                           dest="externally_hosted_url", required=True)
   args = arg_parser.parse_args()
 
-  print json.dumps(
-      CreateJson(args.apk_file_name, args.externally_hosted_url).parse(),
-                 indent=1)
+  data_dict = CreateJson(args.apk_file_name, args.externally_hosted_url).parse()
+  print(json.dumps(data_dict, indent=1))
   return
 
 if __name__ == "__main__":
