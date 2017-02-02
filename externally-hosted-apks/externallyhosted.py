@@ -338,7 +338,7 @@ class CertificateParser(AbstractApkParser):
           # in base64 format, which is what we need.
           certificate = None
           for ii in temp_out_file:
-            ii = ii.strip()
+            ii = ii.decode('ascii').strip()
             if re.match(r".*-+BEGIN\s+CERTIFICATE-+.*", ii):
               _log.debug("Begin certificate line")
               certificate = ""
@@ -352,9 +352,8 @@ class CertificateParser(AbstractApkParser):
               _log.debug("Skipping non-cert line: " + ii)
     return output
 
-class CreateJson(object):
-  """Print an externally-hosted APK JSON definition to stdout.
-
+class DataExtractor(object):
+  """Class to extract the required information from the apk and hosting url.
   """
 
   def __init__(self, apk, externallyhostedurl):
@@ -362,6 +361,12 @@ class CreateJson(object):
     self.externallyhostedurl = externallyhostedurl
 
   def parse(self):
+    """Parse the given apk and hosting url.
+
+    This extracts the required information and returns a dict which needs to
+    be formatted as JSON to form the file that can be uploaded in the developer
+    console."""
+
     if not os.path.exists(self.apk):
       raise MissingPrerequisiteError("Could not find APK " + self.apk)
 
@@ -402,8 +407,8 @@ def main():
                           dest="externally_hosted_url", required=True)
   args = arg_parser.parse_args()
 
-  data_dict = CreateJson(args.apk_file_name, args.externally_hosted_url).parse()
-  print(json.dumps(data_dict, indent=1))
+  extractor = DataExtractor(args.apk_file_name, args.externally_hosted_url)
+  print(json.dumps(extractor.parse(), indent=1))
   return
 
 if __name__ == "__main__":
