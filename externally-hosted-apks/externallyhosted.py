@@ -120,7 +120,7 @@ class AaptParser(AbstractApkParser):
 
   def run_aapt(self):
     return subprocess.check_output(
-        self.aapt_exe + " dump --values badging " + self.apk_file,
+        "\"" + self.aapt_exe + "\" dump --values badging " + self.apk_file,
         stderr=subprocess.STDOUT,
         shell=True).decode('utf-8').splitlines()
 
@@ -226,7 +226,7 @@ class JarFileValidationParser(AbstractApkParser):
   def parse(self):
     # Validate that the zip is correctly aligned.
     try:
-      subprocess.check_call(self.zipalign_exe + " -c 4 " + self.apk_file,
+      subprocess.check_call("\"" + self.zipalign_exe + "\" -c 4 " + self.apk_file,
                             shell=True)
     except subprocess.CalledProcessError as e:
       raise Exception("Error: Zip alignment is incorrect", e)
@@ -234,7 +234,7 @@ class JarFileValidationParser(AbstractApkParser):
     # Validate that the jar is signed correctly.
     with open(os.devnull, "w") as dev_null:
       try:
-        subprocess.check_call(self.jarsigner_exe + " -verify " + self.apk_file,
+        subprocess.check_call("\"" + self.jarsigner_exe + "\" -verify " + self.apk_file,
                               stdout=dev_null,
                               shell=True)
       except subprocess.CalledProcessError as e:
@@ -282,7 +282,7 @@ class CertificateParser(AbstractApkParser):
     return spawn.find_executable("openssl")
 
   def openssl_convert_rsa_cert(self, infile_path, outfile_path):
-    subprocess.check_call(self.openssl_exe + " pkcs7 -in "
+    subprocess.check_call("\"" + self.openssl_exe + "\" pkcs7 -in "
                           + infile_path
                           + " -print_certs -inform DER -out "
                           + outfile_path, shell=True)
