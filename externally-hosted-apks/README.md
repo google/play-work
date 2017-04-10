@@ -1,8 +1,8 @@
-#Externally-Hosted APK Definition File Generator
+# Externally-Hosted APK Definition File Generator
 
-##Overview
+## Overview
 To publish a self-hosted private app, a customer must first build an externally-hosted APK definition 
-file. This definition file replaces the APK within Google Play so the app may be hosted externally,
+file (plain-text JSON file). This definition file replaces the APK within Google Play so the app may be hosted externally,
 containing only a minimal set of information rather than the entire APK itself.
 
 The JSON file format of this definition file looks like this:
