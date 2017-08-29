@@ -144,6 +144,8 @@ class AaptParser(AbstractApkParser):
         output["application_label"] = matches.group(1)
       matches = self.APPLICATION_REGEX.match(line)
       if matches:
+        # In the case that the explicit application-label field is not found
+        # in the aapt output, we grab it from the application regex.
         if "application_label" not in output:
           output["application_label"] = matches.group(1)
         output["icon_filename"] = matches.group(2)
