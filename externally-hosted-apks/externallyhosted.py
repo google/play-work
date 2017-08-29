@@ -128,37 +128,37 @@ class AaptParser(AbstractApkParser):
     output = {}
     for line in self.run_aapt():
       matches = self.PACKAGE_MATCH_REGEX.match(line)
-      if matches is not None:
+      if matches:
         _log.info("Matched package")
         output["package_name"] = matches.group(1)
         output["version_code"] = matches.group(2)
         output["version_name"] = matches.group(3)
       matches = self.SDK_VERSION_REGEX.match(line)
-      if matches is not None:
+      if matches:
         output["minimum_sdk"] = matches.group(1)
       matches = self.MAX_SDK_VERSION_REGEX.match(line)
-      if matches is not None:
+      if matches:
         output["maximum_sdk"] = matches.group(1)
       matches = self.APPLICATION_LABEL.match(line)
-      if matches is not None:
+      if matches:
         output["application_label"] = matches.group(1)
       matches = self.APPLICATION_REGEX.match(line)
-      if matches is not None:
+      if matches:
+        # In the case that the explicit "application-label" field is not found
+        # in the aapt output, we grab it from the "application" field.
+        # (More recent versions of aapt only provide localized versions of
+        # application-label in the form "application-label-xx[-XX]".)
+        if "application_label" not in output:
+          output["application_label"] = matches.group(1)
         output["icon_filename"] = matches.group(2)
       matches = self.USES_FEATURE_REGEX.match(line)
-      if matches is not None:
-        if output.get("uses_feature") is None:
-          output["uses_feature"] = []
-        output["uses_feature"].append(matches.group(1))
+      if matches:
+        output.setdefault("uses_feature", []).append(matches.group(1))
       matches = self.USES_PERMISSION_REGEX_OLD.match(line)
-      if matches is not None:
-        if output.get("uses_permission") is None:
-          output["uses_permission"] = []
-        output["uses_permission"].append({"name": matches.group(1)})
+      if matches:
+        output.setdefault("uses_permission", []).append({"name": matches.group(1)})
       matches = self.USES_PERMISSION_REGEX_NEW.match(line)
-      if matches is not None:
-        if output.get("uses_permission") is None:
-          output["uses_permission"] = []
+      if matches:
         new_permission = {"name": matches.group(1)}
         try:
           if matches.group(2) is not None:
@@ -166,7 +166,7 @@ class AaptParser(AbstractApkParser):
         except IndexError:
           # No maxSdkVersion - that's OK, it's not mandatory
           pass
-        output["uses_permission"].append(new_permission)
+        output.setdefault("uses_permission", []).append(new_permission)
     return output
 
 
