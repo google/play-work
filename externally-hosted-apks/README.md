@@ -39,7 +39,7 @@ The JSON object may also include the following additional fields:
 Please ensure that the permissions required by the app are present in the JSON file and correct, to
 avoid your app being unable to access the correct features when installed on the device.
 
-##Android for Work Self-Hosting Tool
+## Android for Work Self-Hosting Tool
 This is a Google-developed tool for generating definition files from APKs. You will need aapt
 installed on your machine, and available on your system’s PATH.
 
@@ -50,7 +50,7 @@ Execute using the following command, replacing where appropriate:
 
 This will print the required contents of the definition file to your console.
 
-##Authenticating the download on the Enterprise Server
+## Authenticating the download on the Enterprise Server
 
 When the Google Play client makes a request to download the self-hosted APK from an enterprise server,
 the request will include a cookie which contains a JSON Web Token.
