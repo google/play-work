@@ -145,7 +145,7 @@ class AaptParser(AbstractApkParser):
       matches = self.APPLICATION_REGEX.match(line)
       if matches:
         # In the case that the explicit "application-label" field is not found
-        # in the aapt output, we grab it from the"application" field.
+        # in the aapt output, we grab it from the "application" field.
         # (more recent versions of aapt only provide localized versions of
         # application-label in the form "application-label-xx[-XX]")
         if "application_label" not in output:
