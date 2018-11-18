@@ -1,0 +1,32 @@
+syntax = "proto2";
+
+option java_package = "com.google.android.work.pubsub";
+
+// A notification delivered to an MDM to inform them of one or more event(s)
+// relating to an enterprise.
+message MdmPushNotification {
+  // Delivers notifications about changes to a product's approval status.
+  repeated ProductApprovalEvent product_approval_event = 1;
+}
+
+// Common information applicable to multiple types of event contained within
+// an MdmPushNotification message that concern a specific enterprise.
+message MdmNotificationEnterpriseEventCommon {
+  // [Required] The ID of the enterprise that the event concerns.
+  optional string enterprise_id = 1;
+
+  // [Required] The time when the event notification was published.
+  optional string event_notification_sent_timestamp = 2;
+}
+
+// An event generated when a product's approval status is changed.
+message ProductApprovalEvent {
+  // [Required] Common information regarding an enterprise event.
+  optional MdmNotificationEnterpriseEventCommon common_event_information = 1;
+
+  // [Required] The ID of the product.
+  optional string product_id = 2;
+
+  // [Required] Whether the product was approved or unapproved.
+  optional bool approved = 3;
+}
