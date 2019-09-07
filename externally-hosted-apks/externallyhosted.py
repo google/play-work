@@ -17,6 +17,9 @@ import sys
 import tempfile
 import zipfile
 
+# Google Play Console now has a minimum version of 26.
+MIN_ALLOWED_SDK_VERSION = 26
+
 # Enable basic logging to stderr
 # logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig(level=logging.WARNING)
@@ -135,7 +138,12 @@ class AaptParser(AbstractApkParser):
         output["version_name"] = matches.group(3)
       matches = self.SDK_VERSION_REGEX.match(line)
       if matches:
-        output["minimum_sdk"] = matches.group(1)
+        min_sdk = int(matches.group(1), 10)
+        if min_sdk < MIN_ALLOWED_SDK_VERSION:
+          _log.warn("Bumping min sdk from %s to %s",
+                    min_sdk, MIN_ALLOWED_SDK_VERSION)
+          min_sdk = MIN_ALLOWED_SDK_VERSION
+        output["minimum_sdk"] = str(min_sdk)
       matches = self.MAX_SDK_VERSION_REGEX.match(line)
       if matches:
         output["maximum_sdk"] = matches.group(1)
