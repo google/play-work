@@ -86,7 +86,7 @@ class AaptParser(AbstractApkParser):
   """
   PACKAGE_MATCH_REGEX = re.compile(
       r"\s*package:\s*name='(.*)'\s*"
-      r"versionCode='(\d+)'\s*versionName='(.+)'\s*")
+      r"versionCode='(\d+)'\s*versionName='([^']+)'\s*")
   APPLICATION_REGEX = re.compile(
       r"\s*application:\s*label='(.*)'\s*icon='(.*)'\s*")
   APPLICATION_LABEL = re.compile(r"\s*application-label:\s*'(.*)'\s*")
